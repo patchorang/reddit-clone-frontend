@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client";
-import { ALL_POSTS, CREATE_POST } from "../queries/queries";
+import { useNavigate } from "react-router-dom";
+import { POSTS, CREATE_POST } from "../queries/queries";
+import SubredditSelector from "./SubredditSelector";
+import Button from "./Button";
 
-function PostForm() {
+const POST_TYPES = { TEXT: "Text", IMAGE: "Image" };
+
+function PostForm({ defaultSubreddit, subreddits }) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [subreddit, setSubreddit] = useState("");
+  const [image, setImage] = useState(null);
+  const [postType, setPostType] = useState(POST_TYPES.TEXT);
+  const [subreddit, setSubreddit] = useState(subreddits[0].name);
 
   const [createPost] = useMutation(CREATE_POST, {
-    refetchQueries: [{ query: ALL_POSTS }],
+    refetchQueries: [{ query: POSTS, variables: { subreddit } }],
   });
 
   const submit = (e) => {
@@ -17,29 +25,97 @@ function PostForm() {
     setTitle("");
     setBody("");
     setSubreddit("");
+    navigate(`/r/${subreddit}`);
   };
+
+  const handleSubredditChange = (subreddit) => {
+    setSubreddit(subreddit);
+  };
+
+  const handlePostTypeChange = (e) => {
+    setPostType(e.target.value);
+  };
+
+  const handleImageChange = (e) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      setImage(null);
+    }
+    setImage(e.target.files[0]);
+  };
+
+  const renderedTextPostForm = (
+    <>
+      <div className="pb-2 pt-2">
+        <input
+          value={title}
+          placeholder="Title"
+          onChange={({ target }) => setTitle(target.value)}
+          className="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+      </div>
+      <div>
+        <textarea
+          value={body}
+          placeholder="Text"
+          onChange={({ target }) => setBody(target.value)}
+          className="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+      </div>
+    </>
+  );
+
+  const renderedImagePostForm = (
+    <>
+      <div className="pb-2 pt-2">
+        <input
+          value={title}
+          placeholder="Title"
+          onChange={({ target }) => setTitle(target.value)}
+          className="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        />
+      </div>
+      <div>
+        <input
+          type="file"
+          accept="image/gif, image/jpeg, image/png"
+          id="postFile"
+          name="postFile"
+          onChange={handleImageChange}
+        />
+      </div>
+      {image && <img src={URL.createObjectURL(image)} />}
+    </>
+  );
 
   return (
     <form onSubmit={submit}>
+      <SubredditSelector
+        userSubreddits={subreddits}
+        onChange={handleSubredditChange}
+        placeholder="Select a community"
+        defaultSelection={subreddit}
+      />
       <div>
-        title
         <input
-          value={title}
-          onChange={({ target }) => setTitle(target.value)}
+          type="radio"
+          value={POST_TYPES.TEXT}
+          name="postType"
+          checked={postType === POST_TYPES.TEXT}
+          onChange={handlePostTypeChange}
         />
-      </div>
-      <div>
-        body
-        <input value={body} onChange={({ target }) => setBody(target.value)} />
-      </div>
-      <div>
-        subreddit
+        {POST_TYPES.TEXT}
         <input
-          value={subreddit}
-          onChange={({ target }) => setSubreddit(target.value)}
+          type="radio"
+          value={POST_TYPES.IMAGE}
+          name="postType"
+          checked={postType === POST_TYPES.IMAGE}
+          onChange={handlePostTypeChange}
         />
+        {POST_TYPES.IMAGE}
       </div>
-      <button type="submit">Post</button>
+      {postType === POST_TYPES.TEXT && renderedTextPostForm}
+      {postType === POST_TYPES.IMAGE && renderedImagePostForm}
+      <Button type="submit">Post</Button>
     </form>
   );
 }
